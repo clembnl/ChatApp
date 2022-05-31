@@ -1,5 +1,7 @@
 import { ref, onUnmounted, computed } from 'vue';
 
+import Filter from 'bad-words';
+
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
@@ -43,6 +45,7 @@ export function useAuth() {
 const db = getFirestore(app);
 const messagesCollection = collection(db, 'messages');
 const messagesQuery = query(messagesCollection, orderBy('createdAt', 'desc'), limit(100));
+const filter = new Filter()
 
 export function useChat() {
     const messages = ref(null);
@@ -63,7 +66,7 @@ export function useChat() {
             userName: displayName,
             userId: uid,
             userPhotoURL: photoURL,
-            text: text,
+            text: filter.clean(text),
             createdAt: serverTimestamp()
         })
     }
