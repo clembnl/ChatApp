@@ -1,11 +1,11 @@
-import { ref, onUnmounted, computed } from 'vue';
+import { ref, onUnmounted, onMounted, computed } from 'vue';
 
 import Filter from 'bad-words';
 
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
-import { getFirestore, collection, query, orderBy, limit, getDocs, serverTimestamp } from "firebase/firestore";
+import { getFirestore, collection, query, orderBy, limit, getDocs, serverTimestamp, setDoc, doc } from "firebase/firestore";
 
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -47,29 +47,32 @@ const messagesCollection = collection(db, 'messages');
 const messagesQuery = query(messagesCollection, orderBy('createdAt', 'desc'), limit(100));
 const filter = new Filter()
 
-export function useChat() {
-    const messages = ref(null);
-    const querySnapshot = await getDocs(messagesQuery);
+export async function useChat() {
+    const messages = ref([]);
     
-    const unsubscribe = () => {
-        messages.value = querySnapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
-            .reverse();
+    const unsubscribe = async () => {
+        await getDocs(messagesQuery)
+            .then((querySnapshot) => {
+                messages.value = querySnapshot.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() }))
+                    .reverse();
+            })
+            console.log(messages.value);
     };
-    onUnmounted(unsubscribe);
+    onMounted(unsubscribe);
 
     const { user, isLogin } = useAuth();
-    const sendMessage = text => {
+    const sendMessage = async (text) => {
         if (!isLogin.value) return ;
         const { photoURL, uid, displayName } = user.value;
-        await setDoc(doc(db, 'messages'), {
+        await setDoc(doc(messagesCollection), {
             userName: displayName,
             userId: uid,
             userPhotoURL: photoURL,
             text: filter.clean(text),
             createdAt: serverTimestamp()
         })
-    }
+    };
 
     return { messages, sendMessage };
 }
